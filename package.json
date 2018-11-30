@@ -1,0 +1,25 @@
+{
+    "name": "quik-backend",
+    "version": "1.0.0",
+    "description": "a plug-in for quick server",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jeff-hykin/quik-backend.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/jeff-hykin/quik-backend/issues"
+    },
+    "homepage": "https://github.com/jeff-hykin/quik-backend#readme",
+    "dependencies": {
+        "quik-server": "^1.1.0",
+        "socket.io": "^2.2.0",
+        "socket.io-client": "^2.2.0"
+    }
+}
