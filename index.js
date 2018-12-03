@@ -58,7 +58,7 @@ module.exports = {
         // set default settings if not set
         if (!server.settings.automaticBackendImporter) {
             // automatically import any backend function named ".backend.js"
-            server.settings.automaticBackendImporter = (fileName) => fileName.match(/\.backend\.js+$/)
+            server.settings.automaticBackendImporter = (fileName) => fileName.match(/\.backend\.js$/)
         }
         backendFunctions = {}
         let backendObjectForFrontend = {}
@@ -138,7 +138,10 @@ module.exports = {
             }
             let callBackend = (functionPath, argument) => {
                 socket.emit("backend", { functionPath, argument })
-                return new Promise(resolve => socket.on("backendResponse", response => resolve(response)))
+                return new Promise((resolve, reject) => {
+                    socket.on("backendResponse", response => resolve(response))
+                    socket.on("backendError"   , response => reject(response))
+                })
             }
             let createBackendCaller = (backendPath) => (argument) => callBackend(backendPath, argument)
 
@@ -158,8 +161,13 @@ module.exports = {
         server.io.on('connection', (socket) => {
             // setup a listener for the function
             socket.on("backend", async ({ functionPath, argument }) => {
-                // send the output right back to the client
-                socket.emit('backendResponse', await backendFunctions[functionPath](argument))
+                try {
+                    // send the output right back to the client
+                    socket.emit('backendResponse', await backendFunctions[functionPath](argument))
+                } catch (error) {
+                    // if there was an error, tell the frontend about it 
+                    socket.emit('backendError', error)
+                }
             })
         })
     },
