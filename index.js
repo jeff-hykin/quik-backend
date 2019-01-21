@@ -54,18 +54,34 @@ let set = function(obj, attributeList, value) {
 
 let backendFunctions
 module.exports = {
-    generateFrontend : async (server) => {
+    frontendSideEffects : `
+        Creates a connection to server using socket.io 
+        Uses window.io
+        Uses window.socket
+        Uses quik.backend
+    `,
+    backendSideEffects : `
+        Creates a socket.io connection with the app.server
+        Exposes all files functions that match the automaticBackendImporter() function 
+        Attaches the listener "backend" on the socket
+        uses app.settings.automaticBackendImporter 
+    `,
+    generateFrontend : async (app) => {
         // set default settings if not set
-        if (!server.settings.automaticBackendImporter) {
+        if (!app.settings.automaticBackendImporter) {
             // automatically import any backend function named ".backend.js"
-            server.settings.automaticBackendImporter = (fileName) => fileName.match(/\.backend\.js$/)
+            app.settings.automaticBackendImporter = (fileName) => fileName.match(/\.backend\.js$/)
         }
+
+        // 
+        // Extract all the functions from the backend
+        // 
         backendFunctions = {}
         let backendObjectForFrontend = {}
-        let listOfFiles = await getFiles(absolutePath(server.settings.codeFolder))
+        let listOfFiles = await getFiles(absolutePath(app.settings.codeFolder))
         for (let each of listOfFiles) {
             // if the function returns truthy
-            if (server.settings.automaticBackendImporter(each)) {
+            if (app.settings.automaticBackendImporter(each)) {
                 // then import the file
                 let importedModule = require(each);
                 // if its a function then include it
@@ -73,7 +89,7 @@ module.exports = {
                     // convert "/_Programming/quik-app/code/tryme.backend.js"
                     // into "code/tryme" then into just "tryme"
                     let simplePath = (path.relative(process.cwd(), each)).replace(/(\.backend|)\.js/,"");
-                    let findCodeFolder = new RegExp(`\^${server.settings.codeFolder}/`, 'i');
+                    let findCodeFolder = new RegExp(`\^${app.settings.codeFolder}/`, 'i');
                     simplePath = ("./"+simplePath).replace(findCodeFolder, "")
                     let keyList = simplePath.split("/")
                     set(backendObjectForFrontend, keyList, simplePath)
@@ -83,7 +99,7 @@ module.exports = {
         }
         return `
             // setup of the "backend" object
-            window.backend = ${JSON.stringify(backendObjectForFrontend)}
+            quik.backend = ${JSON.stringify(backendObjectForFrontend)}
             window.io = require("socket.io-client")
             window.socket = new io.connect("/", {
                 'reconnection': false
@@ -145,20 +161,20 @@ module.exports = {
             }
             let createBackendCaller = (backendPath) => (argument) => callBackend(backendPath, argument)
 
-            for (let each of recursivelyAllAttributesOf(window.backend)) {
-                let value = get(window.backend, each)
+            for (let each of recursivelyAllAttributesOf(quik.backend)) {
+                let value = get(quik.backend, each)
                 if (value instanceof Object) {
                     continue
                 }
                 // convert it from a string into a function
-                set(window.backend, each, createBackendCaller(value))
+                set(quik.backend, each, createBackendCaller(value))
             }
         `
     },
-    backend : (server) => {
+    afterBundlerSetup : (app) => {
         const socketIo = require('socket.io')
-        server.io = socketIo(server.httpServer, { origins: '*:*' })
-        server.io.on('connection', (socket) => {
+        app.io = socketIo(app.server, { origins: '*:*' })
+        app.io.on('connection', (socket) => {
             // setup a listener for the function
             socket.on("backend", async ({ functionPath, argument }) => {
                 try {

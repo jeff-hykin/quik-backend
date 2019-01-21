@@ -1,6 +1,6 @@
 {
     "name": "quik-backend",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "description": "a plug-in for quick server",
     "main": "index.js",
     "scripts": {
