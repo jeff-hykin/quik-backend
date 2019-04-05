@@ -152,14 +152,14 @@ module.exports = {
                 }
                 return output
             }
-            let callBackend = (functionPath, argument) => {
-                socket.emit("backend", { functionPath, argument })
+            let callBackend = (functionPath, args) => {
+                socket.emit("backend", { functionPath, args })
                 return new Promise((resolve, reject) => {
                     socket.on("backendResponse", response => resolve(response))
                     socket.on("backendError"   , response => reject(response))
                 })
             }
-            let createBackendCaller = (backendPath) => (argument) => callBackend(backendPath, argument)
+            let createBackendCaller = (backendPath) => (...args) => callBackend(backendPath, args)
 
             for (let each of recursivelyAllAttributesOf(quik.backend)) {
                 let value = get(quik.backend, each)
@@ -176,10 +176,10 @@ module.exports = {
         app.io = socketIo(app.server, { origins: '*:*' })
         app.io.on('connection', (socket) => {
             // setup a listener for the function
-            socket.on("backend", async ({ functionPath, argument }) => {
+            socket.on("backend", async ({ functionPath, args }) => {
                 try {
                     // send the output right back to the client
-                    socket.emit('backendResponse', await backendFunctions[functionPath](argument))
+                    socket.emit('backendResponse', await backendFunctions[functionPath](...args))
                 } catch (error) {
                     // if there was an error, tell the frontend about it 
                     socket.emit('backendError', error)
