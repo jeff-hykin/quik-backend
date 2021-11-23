@@ -154,8 +154,6 @@ module.exports = {
             }
             let callCounter = BigInt(0)
             const callBackend = (functionPath, args) => {
-                console.debug('functionPath is:',functionPath)
-                console.debug('args is:',args)
                 // increment the counter
                 callCounter += BigInt(1)
                 const callCounterAsString = \`\${callCounter}\`
