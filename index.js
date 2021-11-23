@@ -152,17 +152,23 @@ module.exports = {
                 }
                 return output
             }
-            let callBackend = (functionPath, args) => {
-                socket.emit("backend", { functionPath, args })
+            let callCounter = BigInt(0)
+            const callBackend = (functionPath, args) => {
+                console.debug('functionPath is:',functionPath)
+                console.debug('args is:',args)
+                // increment the counter
+                callCounter += BigInt(1)
+                const callCounterAsString = \`\${callCounter}\`
+                socket.emit("backend", { functionPath, callCounter: callCounterAsString, args })
                 return new Promise((resolve, reject) => {
-                    socket.on("backendResponse", response => resolve(response))
-                    socket.on("backendError"   , response => reject(response))
+                    socket.on("backendResponse:"+callCounterAsString, response => resolve(response))
+                    socket.on("backendError:"+callCounterAsString   , response => reject(response))
                 })
             }
             let createBackendCaller = (backendPath) => (...args) => callBackend(backendPath, args)
 
-            for (let each of recursivelyAllAttributesOf(quik.backend)) {
-                let value = get(quik.backend, each)
+            for (const each of recursivelyAllAttributesOf(quik.backend)) {
+                const value = get(quik.backend, each)
                 if (value instanceof Object) {
                     continue
                 }
@@ -176,13 +182,13 @@ module.exports = {
         app.io = socketIo(app.server, { origins: '*:*' })
         app.io.on('connection', (socket) => {
             // setup a listener for the function
-            socket.on("backend", async ({ functionPath, args }) => {
+            socket.on("backend", async ({ functionPath, callCounter, args }) => {
                 try {
                     // send the output right back to the client
-                    socket.emit('backendResponse', await backendFunctions[functionPath](...args))
+                    socket.emit(`backendResponse:${callCounter}`, await backendFunctions[functionPath](...args))
                 } catch (error) {
                     // if there was an error, tell the frontend about it 
-                    socket.emit('backendError', error)
+                    socket.emit(`backendError:${callCounter}`, error)
                 }
             })
         })
